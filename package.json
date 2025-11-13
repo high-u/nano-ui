@@ -1,0 +1,15 @@
+{
+  "name": "minimal-webui",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "build": "terser src/minui.js -c -m --module --ecma 2020 -o dist/minui.min.js --source-map"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "terser": "^5.44.1"
+  }
+}

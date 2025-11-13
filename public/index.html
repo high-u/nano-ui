@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="" />
+    <title>Minimal Web UI</title>
+    <style>
+      .hoge {
+        background-color: silver;
+      }
+    </style>
+  </head>
+  <body>
+    
+</body>
+<script type="module">
+  import { h, createStore, bind } from '/src/minui.js';
+
+  // タスク管理（配列をストアで一元管理 / key 再利用 / 購読で再描画）
+  const taskStore = createStore({ tasks: [], asc: true });
+
+  const taskInput = h('input', null, { type: 'text', placeholder: 'タスク名' }, () => null);
+  const addTaskBtn = h('button', null, { type: 'button', on: { click: () => {
+    const title = taskInput.value;
+    const id = String(Date.now()) + '-' + Math.random().toString(36).slice(2, 8);
+    taskStore.update(s => ({ ...s, tasks: [...s.tasks, { id, title, done: false }] }));
+    taskInput.value = '';
+  } } }, () => '追加');
+  const ascRadio2 = h('input', null, { type: 'radio', name: 'order2', value: 'asc', checked: true, on: { change: () => {
+    taskStore.update(s => ({ ...s, asc: true }));
+  } } }, () => null);
+  const ascLabel2 = h('label', null, null, () => '昇順');
+  const descRadio2 = h('input', null, { type: 'radio', name: 'order2', value: 'desc', on: { change: () => {
+    taskStore.update(s => ({ ...s, asc: false }));
+  } } }, () => null);
+  const descLabel2 = h('label', null, null, () => '降順');
+
+  const taskList = h('ul', null, null, (state) => {
+    const ordered = [...state.tasks].sort((a, b) => a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' }));
+    if (!state.asc) ordered.reverse();
+    return ordered.map(task => h('li', task.id, null, (t) => {
+      const cb = h('input', null, { type: 'checkbox', on: { change: (e) => {
+        const checked = e.target.checked;
+        taskStore.update(s => ({
+          ...s,
+          tasks: s.tasks.map(x => x.id === t.id ? { ...x, done: checked } : x)
+        }));
+      } } }, () => null);
+      cb.checked = !!t.done;
+      const title = h('span', null, null, () => t.title);
+      title.style.textDecoration = t.done ? 'line-through' : '';
+      return [cb, ' ', title];
+    }, task));
+  }, taskStore.get());
+
+  const taskControls = h('div', null, null, () => [taskInput, addTaskBtn, ascRadio2, ascLabel2, descRadio2, descLabel2]);
+  const taskApp = h('div', null, null, () => [taskControls, taskList]);
+  document.body.replaceChildren(taskApp);
+
+  // リスト全体を購読で再描画（bind をデフォルト導線として使用）
+  bind(taskList, taskStore);
+</script>
+</html>
