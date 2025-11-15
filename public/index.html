@@ -3,62 +3,172 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="" />
-    <title>Minimal Web UI</title>
+    <title>Todo App - h.js</title>
     <style>
-      .hoge {
-        background-color: silver;
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        max-width: 600px;
+        margin: 40px auto;
+        padding: 20px;
+      }
+      .input-container {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+      input[type="text"] {
+        flex: 1;
+        padding: 8px 12px;
+        font-size: 14px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      button {
+        padding: 8px 16px;
+        font-size: 14px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .add-btn {
+        background-color: #4CAF50;
+        color: white;
+      }
+      .add-btn:hover {
+        background-color: #45a049;
+      }
+      ul {
+        list-style: none;
+        padding: 0;
+      }
+      li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px;
+        margin-bottom: 8px;
+        background-color: #f5f5f5;
+        border-radius: 4px;
+      }
+      .delete-btn {
+        background-color: #f44336;
+        color: white;
+      }
+      .delete-btn:hover {
+        background-color: #da190b;
+      }
+      .completed {
+        background-color: #e0e0e0;
+      }
+      .complete-btn {
+        background-color: #2196F3;
+        color: white;
+      }
+      .complete-btn:hover {
+        background-color: #1976D2;
+      }
+      .button-container {
+        display: flex;
+        gap: 8px;
       }
     </style>
   </head>
   <body>
-    
-</body>
-<script type="module">
-  import { h, createStore, bind } from '/src/minui.js';
+    <h1>Todo App - h.js</h1>
+  </body>
+  <script type="module">
+    import { h, render } from '../src/nanoui.js';
 
-  // タスク管理（配列をストアで一元管理 / key 再利用 / 購読で再描画）
-  const taskStore = createStore({ tasks: [], asc: true });
+    // State
+    let tasks = [];
+    let taskId = 0;
 
-  const taskInput = h('input', null, { type: 'text', placeholder: 'タスク名' }, () => null);
-  const addTaskBtn = h('button', null, { type: 'button', on: { click: () => {
-    const title = taskInput.value;
-    const id = String(Date.now()) + '-' + Math.random().toString(36).slice(2, 8);
-    taskStore.update(s => ({ ...s, tasks: [...s.tasks, { id, title, done: false }] }));
-    taskInput.value = '';
-  } } }, () => '追加');
-  const ascRadio2 = h('input', null, { type: 'radio', name: 'order2', value: 'asc', checked: true, on: { change: () => {
-    taskStore.update(s => ({ ...s, asc: true }));
-  } } }, () => null);
-  const ascLabel2 = h('label', null, null, () => '昇順');
-  const descRadio2 = h('input', null, { type: 'radio', name: 'order2', value: 'desc', on: { change: () => {
-    taskStore.update(s => ({ ...s, asc: false }));
-  } } }, () => null);
-  const descLabel2 = h('label', null, null, () => '降順');
+    // Create input element
+    const input = h('input', {
+      type: 'text',
+      placeholder: 'タスク名を入力...',
+      id: 'taskInput'
+    });
 
-  const taskList = h('ul', null, null, (state) => {
-    const ordered = [...state.tasks].sort((a, b) => a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' }));
-    if (!state.asc) ordered.reverse();
-    return ordered.map(task => h('li', task.id, null, (t) => {
-      const cb = h('input', null, { type: 'checkbox', on: { change: (e) => {
-        const checked = e.target.checked;
-        taskStore.update(s => ({
-          ...s,
-          tasks: s.tasks.map(x => x.id === t.id ? { ...x, done: checked } : x)
-        }));
-      } } }, () => null);
-      cb.checked = !!t.done;
-      const title = h('span', null, null, () => t.title);
-      title.style.textDecoration = t.done ? 'line-through' : '';
-      return [cb, ' ', title];
-    }, task));
-  }, taskStore.get());
+    // Create add button
+    const addButton = h('button', {
+      class: 'add-btn',
+      onClick: () => addTask()
+    }, '追加');
 
-  const taskControls = h('div', null, null, () => [taskInput, addTaskBtn, ascRadio2, ascLabel2, descRadio2, descLabel2]);
-  const taskApp = h('div', null, null, () => [taskControls, taskList]);
-  document.body.replaceChildren(taskApp);
+    // Create input container
+    const inputContainer = h('div', {
+      class: 'input-container'
+    }, input, addButton);
 
-  // リスト全体を購読で再描画（bind をデフォルト導線として使用）
-  bind(taskList, taskStore);
-</script>
+    // Create task list
+    const taskList = h('ul', { id: 'taskList' });
+
+    // 要素生成関数
+    function createTaskElement(task) {
+      return h('li', {
+        class: task.completed ? 'completed' : ''
+      },
+        h('span', {}, task.name),
+        h('div', { class: 'button-container' },
+          !task.completed && h('button', {
+            class: 'complete-btn',
+            onClick: () => completeTask(task.id)
+          }, '完了'),
+          h('button', {
+            class: 'delete-btn',
+            onClick: () => deleteTask(task.id)
+          }, '削除')
+        )
+      );
+    }
+
+    // レンダラー作成
+    const renderTasks = render({
+      container: taskList,
+      keySelector: task => task.id,
+      createElement: createTaskElement
+    });
+
+    // Add task function
+    function addTask() {
+      const taskName = input.value.trim();
+      if (!taskName) return;
+
+      const task = {
+        id: taskId++,
+        name: taskName,
+        completed: false
+      };
+      tasks.push(task);
+
+      input.value = '';
+      renderTasks(tasks);
+    }
+
+    // Delete task function
+    function deleteTask(id) {
+      tasks = tasks.filter(task => task.id !== id);
+      renderTasks(tasks);
+    }
+
+    // Complete task function
+    function completeTask(id) {
+      const task = tasks.find(t => t.id === id);
+      if (task) {
+        task.completed = true;
+        renderTasks(tasks);
+      }
+    }
+
+    // Handle Enter key
+    input.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        addTask();
+      }
+    });
+
+    // Append to body
+    document.body.append(inputContainer, taskList);
+  </script>
 </html>
