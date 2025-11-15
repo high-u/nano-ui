@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Todo App - h.js</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        max-width: 600px;
+        margin: 40px auto;
+        padding: 20px;
+      }
+      .input-container {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+      input[type="text"] {
+        flex: 1;
+        padding: 8px 12px;
+        font-size: 14px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      button {
+        padding: 8px 16px;
+        font-size: 14px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .add-btn {
+        background-color: #4CAF50;
+        color: white;
+      }
+      .add-btn:hover {
+        background-color: #45a049;
+      }
+      ul {
+        list-style: none;
+        padding: 0;
+      }
+      li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px;
+        margin-bottom: 8px;
+        background-color: #f5f5f5;
+        border-radius: 4px;
+      }
+      .delete-btn {
+        background-color: #f44336;
+        color: white;
+      }
+      .delete-btn:hover {
+        background-color: #da190b;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Todo App - h.js</h1>
+  </body>
+  <script type="module">
+    import { h } from './h.js';
+
+    // State
+    let tasks = [];
+    let taskId = 0;
+
+    // Create input element
+    const input = h('input', {
+      type: 'text',
+      placeholder: 'タスク名を入力...',
+      id: 'taskInput'
+    });
+
+    // Create add button
+    const addButton = h('button', {
+      class: 'add-btn',
+      onClick: () => addTask()
+    }, '追加');
+
+    // Create input container
+    const inputContainer = h('div', {
+      class: 'input-container'
+    }, input, addButton);
+
+    // Create task list
+    const taskList = h('ul', { id: 'taskList' });
+
+    // Add task function
+    function addTask() {
+      const taskName = input.value.trim();
+      if (!taskName) return;
+
+      const task = {
+        id: taskId++,
+        name: taskName
+      };
+      tasks.push(task);
+
+      input.value = '';
+      renderTasks();
+    }
+
+    // Delete task function
+    function deleteTask(id) {
+      tasks = tasks.filter(task => task.id !== id);
+      renderTasks();
+    }
+
+    // Render tasks
+    function renderTasks() {
+      const taskElements = tasks.map(task =>
+        h('li', {},
+          h('span', {}, task.name),
+          h('button', {
+            class: 'delete-btn',
+            onClick: () => deleteTask(task.id)
+          }, '削除')
+        )
+      );
+
+      taskList.replaceChildren(...taskElements);
+    }
+
+    // Handle Enter key
+    input.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        addTask();
+      }
+    });
+
+    // Append to body
+    document.body.append(inputContainer, taskList);
+  </script>
+</html>

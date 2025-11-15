@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Todo App - fluent.js</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        max-width: 600px;
+        margin: 40px auto;
+        padding: 20px;
+      }
+      .input-container {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+      input[type="text"] {
+        flex: 1;
+        padding: 8px 12px;
+        font-size: 14px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      button {
+        padding: 8px 16px;
+        font-size: 14px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .add-btn {
+        background-color: #4CAF50;
+        color: white;
+      }
+      .add-btn:hover {
+        background-color: #45a049;
+      }
+      ul {
+        list-style: none;
+        padding: 0;
+      }
+      li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px;
+        margin-bottom: 8px;
+        background-color: #f5f5f5;
+        border-radius: 4px;
+      }
+      .delete-btn {
+        background-color: #f44336;
+        color: white;
+      }
+      .delete-btn:hover {
+        background-color: #da190b;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Todo App - fluent.js</h1>
+  </body>
+  <script type="module">
+    import { create } from './fluent.js';
+
+    // State
+    let tasks = [];
+    let taskId = 0;
+
+    // Create input element
+    const input = create('input')
+      .attr('type', 'text')
+      .attr('placeholder', 'タスク名を入力...')
+      .prop('id', 'taskInput');
+
+    // Create add button
+    const addButton = create('button')
+      .class('add-btn')
+      .text('追加')
+      .on('click', () => addTask());
+
+    // Create input container
+    const inputContainer = create('div')
+      .class('input-container')
+      .append(input, addButton);
+
+    // Create task list
+    const taskList = create('ul')
+      .prop('id', 'taskList');
+
+    // Add task function
+    function addTask() {
+      const taskName = input.get().value.trim();
+      if (!taskName) return;
+
+      const task = {
+        id: taskId++,
+        name: taskName
+      };
+      tasks.push(task);
+
+      input.get().value = '';
+      renderTasks();
+    }
+
+    // Delete task function
+    function deleteTask(id) {
+      tasks = tasks.filter(task => task.id !== id);
+      renderTasks();
+    }
+
+    // Render tasks
+    function renderTasks() {
+      const taskElements = tasks.map(task =>
+        create('li')
+          .append(
+            create('span').text(task.name),
+            create('button')
+              .class('delete-btn')
+              .text('削除')
+              .on('click', () => deleteTask(task.id))
+          )
+      );
+
+      taskList.replaceChildren(...taskElements);
+    }
+
+    // Handle Enter key
+    input.on('keypress', (e) => {
+      if (e.key === 'Enter') {
+        addTask();
+      }
+    });
+
+    // Append to body
+    document.body.append(
+      inputContainer.get(),
+      taskList.get()
+    );
+  </script>
+</html>
