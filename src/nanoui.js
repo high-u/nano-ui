@@ -6,17 +6,18 @@
 /**
  * Create a DOM element with hyperscript style
  * @param {string} tag - HTML tag name
+ * @param {string|undefined} key - Unique key for the element (for educational purposes)
  * @param {Object} props - Element properties (attributes, events, styles)
  * @param {...(Node|string|Array)} children - Child elements or text
  * @returns {HTMLElement} Created DOM element
  *
  * @example
- * h('div', { class: 'container' },
- *   h('span', { style: 'color: red' }, 'Hello'),
+ * h('div', 'unique-key', { class: 'container' },
+ *   h('span', 'span-key', { style: 'color: red' }, 'Hello'),
  *   'World'
  * )
  */
-export const h = (tag, props = {}, ...children) => {
+export const h = (tag, key, props = {}, ...children) => {
   const element = document.createElement(tag);
 
   // Set properties
@@ -40,7 +41,6 @@ export const h = (tag, props = {}, ...children) => {
   // Append children
   const appendChildren = (parent, children) => {
     children.flat(Infinity).forEach(child => {
-      if (child == null || child === false || child === true) return;
       
       if (child instanceof Node) {
         parent.appendChild(child);
@@ -60,62 +60,44 @@ export const h = (tag, props = {}, ...children) => {
  * Create a diff renderer for efficient list rendering or single element replacement
  * @param {Object} options - Renderer options
  * @param {HTMLElement} options.container - Parent element to render into
- * @param {Function} [options.keySelector] - Function to get unique key from item (for arrays)
  * @param {Function} options.createElement - Function to create element from item
  * @returns {Function} Render function
  *
  * @example
- * // For arrays (with keySelector)
+ * // For arrays
  * const renderTasks = render({
  *   container: taskList,
- *   keySelector: item => item.id,
  *   createElement: createTaskElement
  * });
  * renderTasks(tasks);
  * 
- * // For single elements (without keySelector)
+ * // For single elements
  * const renderCounter = render({
  *   container: counterDiv,
- *   createElement: () => h('span', {}, String(count))
+ *   createElement: () => h('span', 'counter', {}, String(count))
  * });
  * renderCounter();
  */
-export const render = ({ container, keySelector, createElement }) => {
-  // keySelector がある場合は配列用の処理
-  if (keySelector) {
-    const elementMap = new Map();      // key → element
-    const valueMap = new Map();        // key → JSON文字列
-    
-    return (items) => {
-      // 不要な要素を削除
-      const currentKeys = new Set(items.map(keySelector));
+export const render = ({ container, createElement }) => {
+  const elementMap = new Map();  // key → element
+  
+  return (data) => {
+    if (Array.isArray(data)) {
+      // 1. 先に削除処理
       elementMap.forEach((element, key) => {
-        if (!currentKeys.has(key)) {
+        if (!data.some(item => JSON.stringify(item) === key)) {
           element.remove();
           elementMap.delete(key);
-          valueMap.delete(key);
         }
       });
       
-      // 各アイテムを処理
-      items.forEach((item, index) => {
-        const key = keySelector(item);
-        const jsonValue = JSON.stringify(item);
+      // 2. 新規作成・位置調整
+      data.forEach((item, index) => {
+        const key = JSON.stringify(item);
         let element = elementMap.get(key);
-        const oldValue = valueMap.get(key);
-        
         if (!element) {
-          // 新規作成
           element = createElement(item);
           elementMap.set(key, element);
-          valueMap.set(key, jsonValue);
-        } else if (oldValue !== jsonValue) {
-          // 値が変わったら更新
-          const newElement = createElement(item);
-          element.parentNode.replaceChild(newElement, element);
-          elementMap.set(key, newElement);
-          valueMap.set(key, jsonValue);
-          element = newElement;
         }
         
         // 位置調整
@@ -124,14 +106,11 @@ export const render = ({ container, keySelector, createElement }) => {
           container.insertBefore(element, targetPosition);
         }
       });
-    };
-  }
-  
-  // keySelector がない場合は単一要素用の処理
-  return (item) => {
-    const newElement = createElement(item);
-    container.innerHTML = '';
-    container.appendChild(newElement);
+    } else {
+      // 単一要素処理
+      container.innerHTML = '';
+      container.appendChild(createElement(data));
+    }
   };
 };
 

@@ -46,19 +46,19 @@
 
     // カウンターのテスト（単一要素）
     let count = 0;
-    const counterContainer = h('div', { class: 'counter' });
-    const incrementButton = h('button', { onClick: () => {
+    const counterContainer = h('div', 'counter-container', { class: 'counter' });
+    const incrementButton = h('button', 'increment-btn', { onClick: () => {
       count++;
       renderCounter();
     }}, '+1');
-    const decrementButton = h('button', { onClick: () => {
+    const decrementButton = h('button', 'decrement-btn', { onClick: () => {
       count--;
       renderCounter();
     }}, '-1');
 
     const renderCounter = render({
       container: counterContainer,
-      createElement: () => h('span', {}, `Count: ${count}`)
+      createElement: () => h('span', 'counter-span', {}, `Count: ${count}`)
     });
 
     // タスクリストのテスト（配列）
@@ -69,13 +69,13 @@
     let taskId = 3;
 
     function createTaskElement(task) {
-      return h('div', { class: 'task-item' },
-        h('span', {}, `${task.name} ${task.completed ? '(完了)' : ''}`)
+      return h('div', `task-${task.id}`, { class: 'task-item' },
+        h('span', `span-${task.id}`, {}, `${task.name} ${task.completed ? '(完了)' : ''}`)
       );
     }
 
-    const taskListContainer = h('div');
-    const addTaskButton = h('button', { onClick: () => {
+    const taskListContainer = h('div', 'task-list-container');
+    const addTaskButton = h('button', 'add-task-btn', { onClick: () => {
       tasks.push({
         id: taskId++,
         name: `タスク${taskId - 1}`,
@@ -86,18 +86,17 @@
 
     const renderTasks = render({
       container: taskListContainer,
-      keySelector: task => task.id,
       createElement: createTaskElement
     });
 
     // 全体を構築
     document.body.append(
-      h('h1', {}, 'Test - nanoui.js'),
+      h('h1', 'main-title', {}, 'Test - nanoui.js'),
       counterContainer,
       incrementButton,
       decrementButton,
-      h('div', { class: 'task-list' },
-        h('h2', {}, 'タスクリスト'),
+      h('div', 'task-list-section', { class: 'task-list' },
+        h('h2', 'task-list-title', {}, 'タスクリスト'),
         taskListContainer,
         addTaskButton
       )

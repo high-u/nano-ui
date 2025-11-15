@@ -84,38 +84,39 @@
     let taskId = 0;
 
     // Create input element
-    const input = h('input', {
+    const input = h('input', 'task-input', {
       type: 'text',
       placeholder: 'タスク名を入力...',
       id: 'taskInput'
     });
 
     // Create add button
-    const addButton = h('button', {
+    const addButton = h('button', 'add-button', {
       class: 'add-btn',
       onClick: () => addTask()
     }, '追加');
 
     // Create input container
-    const inputContainer = h('div', {
+    const inputContainer = h('div', 'input-container', {
       class: 'input-container'
     }, input, addButton);
 
     // Create task list
-    const taskList = h('ul', { id: 'taskList' });
+    const taskList = h('ul', 'task-list', { id: 'taskList' });
 
     // 要素生成関数
     function createTaskElement(task) {
-      return h('li', {
+      return h('li', `task-${task.id}`, {
         class: task.completed ? 'completed' : ''
       },
-        h('span', {}, task.name),
-        h('div', { class: 'button-container' },
-          !task.completed && h('button', {
+        h('span', `span-${task.id}`, {}, task.name),
+        h('div', `buttons-${task.id}`, { class: 'button-container' },
+          h('button', `complete-${task.id}`, {
             class: 'complete-btn',
+            style: task.completed ? 'display: none' : '',
             onClick: () => completeTask(task.id)
           }, '完了'),
-          h('button', {
+          h('button', `delete-${task.id}`, {
             class: 'delete-btn',
             onClick: () => deleteTask(task.id)
           }, '削除')
@@ -126,7 +127,6 @@
     // レンダラー作成
     const renderTasks = render({
       container: taskList,
-      keySelector: task => task.id,
       createElement: createTaskElement
     });
 
