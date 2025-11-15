@@ -12,7 +12,7 @@
  *
  * @example
  * h('div', { class: 'container' },
- *   h('span', { style: { color: 'red' } }, 'Hello'),
+ *   h('span', { style: 'color: red' }, 'Hello'),
  *   'World'
  * )
  */
@@ -21,33 +21,21 @@ export function h(tag, props = {}, ...children) {
 
   // Set properties
   Object.entries(props).forEach(([key, value]) => {
-    if (key === 'class' || key === 'className') {
-      // Handle class
-      if (Array.isArray(value)) {
-        element.classList.add(...value.filter(Boolean));
-      } else if (value) {
-        element.classList.add(...value.split(' ').filter(Boolean));
-      }
-    } else if (key === 'style') {
-      // Handle style object
-      if (typeof value === 'object') {
-        Object.assign(element.style, value);
-      } else {
-        element.style.cssText = value;
-      }
-    } else if (key.startsWith('on')) {
+    if (key.startsWith('on')) {
       // Handle events (onClick, onInput, etc.)
       const eventName = key.slice(2).toLowerCase();
       element.addEventListener(eventName, value);
-    } else if (key === 'dataset') {
-      // Handle dataset
-      Object.assign(element.dataset, value);
-    } else if (key in element) {
-      // Set element property directly
-      element[key] = value;
     } else {
-      // Set as attribute
-      element.setAttribute(key, value);
+      // 関数の場合は実行して値を取得
+      const finalValue = typeof value === 'function' ? value() : value;
+      
+      if (key in element) {
+        // Set element property directly
+        element[key] = finalValue;
+      } else {
+        // Set as attribute
+        element.setAttribute(key, finalValue);
+      }
     }
   });
 
@@ -96,6 +84,69 @@ export function fragment(...children) {
     }
   });
   return frag;
+}
+
+/**
+ * Create a diff renderer for efficient list rendering
+ * @param {Object} options - Renderer options
+ * @param {HTMLElement} options.container - Parent element to render into
+ * @param {Function} options.keySelector - Function to get unique key from item
+ * @param {Function} options.createElement - Function to create element from item
+ * @returns {Function} Render function
+ *
+ * @example
+ * const renderTasks = render({
+ *   container: taskList,
+ *   keySelector: item => item.id,
+ *   createElement: createTaskElement
+ * });
+ * 
+ * renderTasks(tasks);
+ */
+export function render(options) {
+  const { container, keySelector, createElement } = options;
+  const elementMap = new Map();      // key → element
+  const valueMap = new Map();        // key → JSON文字列
+  
+  return function(items) {
+    // 不要な要素を削除
+    const currentKeys = new Set(items.map(keySelector));
+    elementMap.forEach((element, key) => {
+      if (!currentKeys.has(key)) {
+        element.remove();
+        elementMap.delete(key);
+        valueMap.delete(key);
+      }
+    });
+    
+    // 各アイテムを処理
+    items.forEach((item, index) => {
+      const key = keySelector(item);
+      const jsonValue = JSON.stringify(item);
+      let element = elementMap.get(key);
+      const oldValue = valueMap.get(key);
+      
+      if (!element) {
+        // 新規作成
+        element = createElement(item);
+        elementMap.set(key, element);
+        valueMap.set(key, jsonValue);
+      } else if (oldValue !== jsonValue) {
+        // 値が変わったら更新
+        const newElement = createElement(item);
+        element.parentNode.replaceChild(newElement, element);
+        elementMap.set(key, newElement);
+        valueMap.set(key, jsonValue);
+        element = newElement;
+      }
+      
+      // 位置調整
+      const targetPosition = container.children[index];
+      if (targetPosition !== element) {
+        container.insertBefore(element, targetPosition);
+      }
+    });
+  };
 }
 
 // Export default as h for convenience
