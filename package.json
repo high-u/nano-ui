@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "build": "terser src/minui.js -c -m --module --ecma 2020 -o dist/minui.min.js --source-map"
+    "build": "terser src/nanoui.js -c -m --module --ecma 2020 -o dist/nanoui.min.js --source-map"
   },
   "keywords": [],
   "author": "",

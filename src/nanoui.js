@@ -1,5 +1,5 @@
 /**
- * h.js - Hyperscript style DOM creation library
+ * nano-ui - Minimal hyperscript style DOM creation library
  * Simple function to create DOM elements with JSX-like syntax
  */
 
@@ -16,24 +16,22 @@
  *   'World'
  * )
  */
-export function h(tag, props = {}, ...children) {
+export const h = (tag, props = {}, ...children) => {
   const element = document.createElement(tag);
 
   // Set properties
   Object.entries(props).forEach(([key, value]) => {
     if (key.startsWith('on')) {
       // Handle events (onClick, onInput, etc.)
-      const eventName = key.slice(2).toLowerCase();
-      element.addEventListener(eventName, value);
+      element.addEventListener(key.slice(2).toLowerCase(), value);
     } else {
       // 関数の場合は実行して値を取得
       const finalValue = typeof value === 'function' ? value() : value;
       
+      // Set element property or attribute
       if (key in element) {
-        // Set element property directly
         element[key] = finalValue;
       } else {
-        // Set as attribute
         element.setAttribute(key, finalValue);
       }
     }
@@ -42,10 +40,9 @@ export function h(tag, props = {}, ...children) {
   // Append children
   const appendChildren = (parent, children) => {
     children.flat(Infinity).forEach(child => {
-      if (child == null || child === false || child === true) {
-        // Skip null, undefined, boolean
-        return;
-      } else if (child instanceof Node) {
+      if (child == null || child === false || child === true) return;
+      
+      if (child instanceof Node) {
         parent.appendChild(child);
       } else if (Array.isArray(child)) {
         appendChildren(parent, child);
@@ -56,35 +53,8 @@ export function h(tag, props = {}, ...children) {
   };
 
   appendChildren(element, children);
-
   return element;
-}
-
-/**
- * Create a text node
- * @param {string} text - Text content
- * @returns {Text} Text node
- */
-export function text(text) {
-  return document.createTextNode(String(text));
-}
-
-/**
- * Create a document fragment with children
- * @param {...(Node|string|Array)} children - Child elements
- * @returns {DocumentFragment}
- */
-export function fragment(...children) {
-  const frag = document.createDocumentFragment();
-  children.flat(Infinity).forEach(child => {
-    if (child instanceof Node) {
-      frag.appendChild(child);
-    } else if (child != null && child !== false && child !== true) {
-      frag.appendChild(document.createTextNode(String(child)));
-    }
-  });
-  return frag;
-}
+};
 
 /**
  * Create a diff renderer for efficient list rendering or single element replacement
@@ -110,15 +80,13 @@ export function fragment(...children) {
  * });
  * renderCounter();
  */
-export function render(options) {
-  const { container, keySelector, createElement } = options;
-  
+export const render = ({ container, keySelector, createElement }) => {
   // keySelector がある場合は配列用の処理
   if (keySelector) {
     const elementMap = new Map();      // key → element
     const valueMap = new Map();        // key → JSON文字列
     
-    return function(items) {
+    return (items) => {
       // 不要な要素を削除
       const currentKeys = new Set(items.map(keySelector));
       elementMap.forEach((element, key) => {
@@ -160,12 +128,12 @@ export function render(options) {
   }
   
   // keySelector がない場合は単一要素用の処理
-  return function(item) {
+  return (item) => {
     const newElement = createElement(item);
     container.innerHTML = '';
     container.appendChild(newElement);
   };
-}
+};
 
 // Export default as h for convenience
 export default h;
