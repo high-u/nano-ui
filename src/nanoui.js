@@ -17,7 +17,7 @@
  *   'World'
  * )
  */
-export const h = (tag, key, props = {}, ...children) => {
+export const h = (tag, props = {}, ...children) => {
   const element = document.createElement(tag);
 
   // Set properties
@@ -78,7 +78,7 @@ export const h = (tag, key, props = {}, ...children) => {
  * });
  * renderCounter();
  */
-export const render = ({ container, createElement }) => {
+export const render = (container, createElement) => {
   const elementMap = new Map();  // key → element
   
   return (data) => {
