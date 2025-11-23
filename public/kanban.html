@@ -95,6 +95,9 @@
         display: flex;
         gap: 4px;
       }
+      .hidden {
+        display: none;
+      }
     </style>
   </head>
   <body>
@@ -164,33 +167,25 @@
       const isFirst = laneIndex === 0;
       const isLast = laneIndex === lanesArray.length - 1;
 
-      const buttons = [];
-
-      if (!isFirst) {
-        buttons.push(h('button', {
-          id: `task-left-${task.id}`,
-          class: 'move-btn',
-          onClick: () => moveTask(task.id, -1, lanesArray)
-        }, '←'));
-      }
-
-      if (!isLast) {
-        buttons.push(h('button', {
-          id: `task-right-${task.id}`,
-          class: 'move-btn',
-          onClick: () => moveTask(task.id, 1, lanesArray)
-        }, '→'));
-      }
-
-      buttons.push(h('button', {
-        id: `task-delete-${task.id}`,
-        class: 'delete-btn',
-        onClick: () => deleteTask(task.id, lanesArray)
-      }, '削除'));
-
       return h('div', { id: `task-${task.id}`, class: 'task' },
         h('div', { id: `task-name-${task.id}`, class: 'task-name' }, task.name),
-        h('div', { id: `task-buttons-${task.id}`, class: 'task-buttons' }, ...buttons)
+        h('div', { id: `task-buttons-${task.id}`, class: 'task-buttons' },
+          h('button', {
+            id: `task-left-${task.id}`,
+            class: `move-btn ${isFirst ? 'hidden' : ''}`,
+            onClick: () => moveTask(task.id, -1, lanesArray)
+          }, '←'),
+          h('button', {
+            id: `task-right-${task.id}`,
+            class: `move-btn ${isLast ? 'hidden' : ''}`,
+            onClick: () => moveTask(task.id, 1, lanesArray)
+          }, '→'),
+          h('button', {
+            id: `task-delete-${task.id}`,
+            class: 'delete-btn',
+            onClick: () => deleteTask(task.id, lanesArray)
+          }, '削除')
+        )
       );
     }
 
