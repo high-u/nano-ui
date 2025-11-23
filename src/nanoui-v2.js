@@ -79,16 +79,27 @@ const attributesEqual = (oldEl, newEl) => {
  */
 const getKey = (el) => el.id;
 
-/**
- * Create a diff renderer for efficient list rendering
- */
-export const render = (container, createElements) => {
-  // 前回DOMに追加した要素への参照を保持
-  const elementRefs = new Map();
+  /**
+   * Create a diff renderer for efficient list rendering
+   * @param {HTMLElement} container - Container element to render into
+   * @param {Function} createElements - Function that creates elements (will receive renderer arguments)
+   * @returns {Function} Renderer function that accepts arguments to pass to createElements
+   *
+   * @example
+   * const renderer = render(container, (data, options) => {
+   *   return h('div', {}, `Hello ${data.name}, count: ${options.count}`);
+   * });
+   * 
+   * // レンダラー実行時に引数を渡す
+   * renderer({ name: 'World' }, { count: 42 });
+   */
+  export const render = (container, createElements) => {
+    // 前回DOMに追加した要素への参照を保持
+    const elementRefs = new Map();
 
-  return () => {
-    const newElements = createElements();
-    const usedKeys = new Set();
+    return (...args) => {
+      const newElements = createElements(...args);
+      const usedKeys = new Set();
 
     // ツリーをパッチ
     const patchTree = (parent, newChildren) => {
