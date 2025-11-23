@@ -159,64 +159,115 @@
       )
     );
 
-    // Renderer
-    const renderBoard = render(board, (lanesArray) => {
-      // Create task element (inner function with closure)
-      const createTaskElement = (task, laneIndex) => {
-        const isFirst = laneIndex === 0;
-        const isLast = laneIndex === lanesArray.length - 1;
+    // Create task element
+    function createTaskElement(task, laneIndex, lanesArray) {
+      const isFirst = laneIndex === 0;
+      const isLast = laneIndex === lanesArray.length - 1;
 
-        const buttons = [];
+      const buttons = [];
 
-        if (!isFirst) {
-          buttons.push(h('button', {
-            id: `task-left-${task.id}`,
-            class: 'move-btn',
-            onClick: () => moveTask(task.id, -1)
-          }, '←'));
-        }
-
-        if (!isLast) {
-          buttons.push(h('button', {
-            id: `task-right-${task.id}`,
-            class: 'move-btn',
-            onClick: () => moveTask(task.id, 1)
-          }, '→'));
-        }
-
+      if (!isFirst) {
         buttons.push(h('button', {
-          id: `task-delete-${task.id}`,
-          class: 'delete-btn',
-          onClick: () => deleteTask(task.id)
-        }, '削除'));
+          id: `task-left-${task.id}`,
+          class: 'move-btn',
+          onClick: () => moveTask(task.id, -1, lanesArray)
+        }, '←'));
+      }
 
-        return h('div', { id: `task-${task.id}`, class: 'task' },
-          h('div', { id: `task-name-${task.id}`, class: 'task-name' }, task.name),
-          h('div', { id: `task-buttons-${task.id}`, class: 'task-buttons' }, ...buttons)
-        );
-      };
+      if (!isLast) {
+        buttons.push(h('button', {
+          id: `task-right-${task.id}`,
+          class: 'move-btn',
+          onClick: () => moveTask(task.id, 1, lanesArray)
+        }, '→'));
+      }
 
-      // Create lane element (inner function with closure)
-      const createLaneElement = (lane) => {
-        const laneIndex = lanesArray.findIndex(l => l.id === lane.id);
+      buttons.push(h('button', {
+        id: `task-delete-${task.id}`,
+        class: 'delete-btn',
+        onClick: () => deleteTask(task.id, lanesArray)
+      }, '削除'));
 
-        return h('div', { id: `lane-${lane.id}`, class: 'lane' },
-          h('div', { id: `lane-header-${lane.id}`, class: 'lane-header' },
-            h('span', { id: `lane-title-${lane.id}`, class: 'lane-title' }, lane.name),
-            h('button', {
-              id: `lane-delete-${lane.id}`,
-              class: 'lane-delete-btn',
-              onClick: () => deleteLane(lane.id)
-            }, '削除')
-          ),
-          h('div', { id: `lane-tasks-${lane.id}`, class: 'task-list' },
-            ...lane.tasks.map(task => createTaskElement(task, laneIndex))
-          )
-        );
-      };
+      return h('div', { id: `task-${task.id}`, class: 'task' },
+        h('div', { id: `task-name-${task.id}`, class: 'task-name' }, task.name),
+        h('div', { id: `task-buttons-${task.id}`, class: 'task-buttons' }, ...buttons)
+      );
+    }
 
-      return lanesArray.map(lane => createLaneElement(lane));
-    });
+    // Create lane element
+    function createLaneElement(lane, lanesArray) {
+      const laneIndex = lanesArray.findIndex(l => l.id === lane.id);
+
+      return h('div', { id: `lane-${lane.id}`, class: 'lane' },
+        h('div', { id: `lane-header-${lane.id}`, class: 'lane-header' },
+          h('span', { id: `lane-title-${lane.id}`, class: 'lane-title' }, lane.name),
+          h('button', {
+            id: `lane-delete-${lane.id}`,
+            class: 'lane-delete-btn',
+            onClick: () => deleteLane(lane.id, lanesArray)
+          }, '削除')
+        ),
+        h('div', { id: `lane-tasks-${lane.id}`, class: 'task-list' },
+          ...lane.tasks.map(task => createTaskElement(task, laneIndex, lanesArray))
+        )
+      );
+    }
+
+    // Delete task
+    function deleteTask(id, lanesArray) {
+      lanesArray.forEach(lane => {
+        lane.tasks = lane.tasks.filter(t => t.id !== id);
+      });
+      renderBoard(lanesArray);
+    }
+
+    // Move task to adjacent lane
+    function moveTask(taskId, direction, lanesArray) {
+      let task = null;
+      let currentLaneIndex = -1;
+
+      // Find task and current lane
+      for (let i = 0; i < lanesArray.length; i++) {
+        const foundTask = lanesArray[i].tasks.find(t => t.id === taskId);
+        if (foundTask) {
+          task = foundTask;
+          currentLaneIndex = i;
+          break;
+        }
+      }
+
+      if (!task || currentLaneIndex === -1) return;
+
+      const newLaneIndex = currentLaneIndex + direction;
+
+      if (newLaneIndex < 0 || newLaneIndex >= lanesArray.length) return;
+
+      // Remove task from current lane
+      lanesArray[currentLaneIndex].tasks = lanesArray[currentLaneIndex].tasks.filter(t => t.id !== taskId);
+
+      // Add task to new lane at beginning
+      lanesArray[newLaneIndex].tasks.unshift(task);
+
+      renderBoard(lanesArray);
+    }
+
+    // Delete lane
+    function deleteLane(id, lanesArray) {
+      const index = lanesArray.findIndex(l => l.id === id);
+      if (index !== -1) {
+        lanesArray.splice(index, 1);
+      }
+      updateLaneSelect();
+      renderBoard(lanesArray);
+    }
+
+    // Renderer
+    const renderBoard = render(
+      board, 
+      (lanesArray) => {
+        return lanesArray.map(lane => createLaneElement(lane, lanesArray));
+      }
+    );
 
     // Update lane select options
     function updateLaneSelect() {
@@ -240,16 +291,6 @@
       renderBoard(lanes);
     }
 
-    // Delete lane
-    function deleteLane(id) {
-      const index = lanes.findIndex(l => l.id === id);
-      if (index !== -1) {
-        lanes.splice(index, 1);
-      }
-      updateLaneSelect();
-      renderBoard(lanes);
-    }
-
     // Add task
     function addTask() {
       const name = taskInput.value.trim();
@@ -264,43 +305,6 @@
       renderBoard(lanes);
     }
 
-    // Delete task
-    function deleteTask(id) {
-      lanes.forEach(lane => {
-        lane.tasks = lane.tasks.filter(t => t.id !== id);
-      });
-      renderBoard(lanes);
-    }
-
-    // Move task to adjacent lane
-    function moveTask(taskId, direction) {
-      let task = null;
-      let currentLaneIndex = -1;
-
-      // Find task and current lane
-      for (let i = 0; i < lanes.length; i++) {
-        const foundTask = lanes[i].tasks.find(t => t.id === taskId);
-        if (foundTask) {
-          task = foundTask;
-          currentLaneIndex = i;
-          break;
-        }
-      }
-
-      if (!task || currentLaneIndex === -1) return;
-
-      const newLaneIndex = currentLaneIndex + direction;
-
-      if (newLaneIndex < 0 || newLaneIndex >= lanes.length) return;
-
-      // Remove task from current lane
-      lanes[currentLaneIndex].tasks = lanes[currentLaneIndex].tasks.filter(t => t.id !== taskId);
-
-      // Add task to new lane at beginning
-      lanes[newLaneIndex].tasks.unshift(task);
-
-      renderBoard(lanes);
-    }
 
     // Append to body
     document.body.append(controls, board);
