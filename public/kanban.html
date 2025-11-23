@@ -159,65 +159,64 @@
       )
     );
 
-    // Create task element
-    function createTaskElement(task, laneIndex, lanesArray) {
-      const isFirst = laneIndex === 0;
-      const isLast = laneIndex === lanesArray.length - 1;
-
-      const buttons = [];
-
-      if (!isFirst) {
-        buttons.push(h('button', {
-          id: `task-left-${task.id}`,
-          class: 'move-btn',
-          onClick: () => moveTask(task.id, -1, lanesArray)
-        }, '←'));
-      }
-
-      if (!isLast) {
-        buttons.push(h('button', {
-          id: `task-right-${task.id}`,
-          class: 'move-btn',
-          onClick: () => moveTask(task.id, 1, lanesArray)
-        }, '→'));
-      }
-
-      buttons.push(h('button', {
-        id: `task-delete-${task.id}`,
-        class: 'delete-btn',
-        onClick: () => deleteTask(task.id, lanesArray)
-      }, '削除'));
-
-      return h('div', { id: `task-${task.id}`, class: 'task' },
-        h('div', { id: `task-name-${task.id}`, class: 'task-name' }, task.name),
-        h('div', { id: `task-buttons-${task.id}`, class: 'task-buttons' }, ...buttons)
-      );
-    }
-
-    // Create lane element
-    function createLaneElement(lane, lanesArray) {
-      const laneIndex = lanesArray.findIndex(l => l.id === lane.id);
-
-      return h('div', { id: `lane-${lane.id}`, class: 'lane' },
-        h('div', { id: `lane-header-${lane.id}`, class: 'lane-header' },
-          h('span', { id: `lane-title-${lane.id}`, class: 'lane-title' }, lane.name),
-          h('button', {
-            id: `lane-delete-${lane.id}`,
-            class: 'lane-delete-btn',
-            onClick: () => deleteLane(lane.id, lanesArray)
-          }, '削除')
-        ),
-        h('div', { id: `lane-tasks-${lane.id}`, class: 'task-list' },
-          ...lane.tasks.map(task => createTaskElement(task, laneIndex, lanesArray))
-        )
-      );
-    }
-
     // Renderer
-    const renderBoard = render(
-      board,
-      () => lanes.map(lane => createLaneElement(lane, lanes))
-    );
+    const renderBoard = render(board, (lanesArray) => {
+      // Create task element (inner function with closure)
+      const createTaskElement = (task, laneIndex) => {
+        const isFirst = laneIndex === 0;
+        const isLast = laneIndex === lanesArray.length - 1;
+
+        const buttons = [];
+
+        if (!isFirst) {
+          buttons.push(h('button', {
+            id: `task-left-${task.id}`,
+            class: 'move-btn',
+            onClick: () => moveTask(task.id, -1)
+          }, '←'));
+        }
+
+        if (!isLast) {
+          buttons.push(h('button', {
+            id: `task-right-${task.id}`,
+            class: 'move-btn',
+            onClick: () => moveTask(task.id, 1)
+          }, '→'));
+        }
+
+        buttons.push(h('button', {
+          id: `task-delete-${task.id}`,
+          class: 'delete-btn',
+          onClick: () => deleteTask(task.id)
+        }, '削除'));
+
+        return h('div', { id: `task-${task.id}`, class: 'task' },
+          h('div', { id: `task-name-${task.id}`, class: 'task-name' }, task.name),
+          h('div', { id: `task-buttons-${task.id}`, class: 'task-buttons' }, ...buttons)
+        );
+      };
+
+      // Create lane element (inner function with closure)
+      const createLaneElement = (lane) => {
+        const laneIndex = lanesArray.findIndex(l => l.id === lane.id);
+
+        return h('div', { id: `lane-${lane.id}`, class: 'lane' },
+          h('div', { id: `lane-header-${lane.id}`, class: 'lane-header' },
+            h('span', { id: `lane-title-${lane.id}`, class: 'lane-title' }, lane.name),
+            h('button', {
+              id: `lane-delete-${lane.id}`,
+              class: 'lane-delete-btn',
+              onClick: () => deleteLane(lane.id)
+            }, '削除')
+          ),
+          h('div', { id: `lane-tasks-${lane.id}`, class: 'task-list' },
+            ...lane.tasks.map(task => createTaskElement(task, laneIndex))
+          )
+        );
+      };
+
+      return lanesArray.map(lane => createLaneElement(lane));
+    });
 
     // Update lane select options
     function updateLaneSelect() {
@@ -235,20 +234,20 @@
       const name = laneInput.value.trim();
       if (!name) return;
 
-      lanes.push({ id: laneId++, name });
+      lanes.push({ id: laneId++, name, tasks: [] });
       laneInput.value = '';
       updateLaneSelect();
-      renderBoard();
+      renderBoard(lanes);
     }
 
     // Delete lane
-    function deleteLane(id, lanesArray) {
-      const index = lanesArray.findIndex(l => l.id === id);
+    function deleteLane(id) {
+      const index = lanes.findIndex(l => l.id === id);
       if (index !== -1) {
-        lanesArray.splice(index, 1);
+        lanes.splice(index, 1);
       }
       updateLaneSelect();
-      renderBoard();
+      renderBoard(lanes);
     }
 
     // Add task
@@ -262,25 +261,25 @@
 
       lane.tasks.unshift({ id: ++maxTaskId, name });
       taskInput.value = '';
-      renderBoard();
+      renderBoard(lanes);
     }
 
     // Delete task
-    function deleteTask(id, lanesArray) {
-      lanesArray.forEach(lane => {
+    function deleteTask(id) {
+      lanes.forEach(lane => {
         lane.tasks = lane.tasks.filter(t => t.id !== id);
       });
-      renderBoard();
+      renderBoard(lanes);
     }
 
     // Move task to adjacent lane
-    function moveTask(taskId, direction, lanesArray) {
+    function moveTask(taskId, direction) {
       let task = null;
       let currentLaneIndex = -1;
 
       // Find task and current lane
-      for (let i = 0; i < lanesArray.length; i++) {
-        const foundTask = lanesArray[i].tasks.find(t => t.id === taskId);
+      for (let i = 0; i < lanes.length; i++) {
+        const foundTask = lanes[i].tasks.find(t => t.id === taskId);
         if (foundTask) {
           task = foundTask;
           currentLaneIndex = i;
@@ -292,15 +291,15 @@
 
       const newLaneIndex = currentLaneIndex + direction;
 
-      if (newLaneIndex < 0 || newLaneIndex >= lanesArray.length) return;
+      if (newLaneIndex < 0 || newLaneIndex >= lanes.length) return;
 
       // Remove task from current lane
-      lanesArray[currentLaneIndex].tasks = lanesArray[currentLaneIndex].tasks.filter(t => t.id !== taskId);
+      lanes[currentLaneIndex].tasks = lanes[currentLaneIndex].tasks.filter(t => t.id !== taskId);
 
       // Add task to new lane at beginning
-      lanesArray[newLaneIndex].tasks.unshift(task);
+      lanes[newLaneIndex].tasks.unshift(task);
 
-      renderBoard();
+      renderBoard(lanes);
     }
 
     // Append to body
@@ -308,6 +307,6 @@
 
     // 初期レンダリング
     updateLaneSelect();
-    renderBoard();
+    renderBoard(lanes);
   </script>
 </html>
