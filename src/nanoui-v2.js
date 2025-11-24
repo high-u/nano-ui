@@ -219,5 +219,10 @@ const getKey = (el) => el.getAttribute('data-key');
   };
 };
 
+// Proxy-based tags object (VanJS style)
+export const tags = new Proxy({}, {
+  get: (_, tag) => (props = {}, ...children) => h(tag, props, ...children)
+});
+
 // Export default as h for convenience
 export default h;

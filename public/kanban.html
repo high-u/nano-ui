@@ -9,6 +9,9 @@
         font-family: system-ui, -apple-system, sans-serif;
         margin: 20px;
       }
+      h1 {
+        font-size: 16px;
+      }
       .controls {
         display: flex;
         gap: 20px;
@@ -22,30 +25,33 @@
       }
       input, select {
         padding: 8px;
-        font-size: 14px;
+        font-size: 16px;
         border: 1px solid #ddd;
         border-radius: 4px;
       }
       button {
         padding: 8px 12px;
-        font-size: 14px;
+        font-size: 16px;
         border: none;
         border-radius: 4px;
         cursor: pointer;
       }
       .add-btn {
-        background-color: #4CAF50;
+        background-color: #333333;
         color: white;
       }
       .delete-btn {
-        background-color: #f44336;
-        color: white;
+        background-color: white;
+        color: black;
+        padding: 4px 12px;
+        border: 1px solid #333333;
       }
       .move-btn {
-        background-color: #2196F3;
+        background-color: #333333;
         color: white;
-        padding: 4px 8px;
         font-size: 12px;
+        padding: 4px 12px;
+        border: 1px solid #333333;
       }
       .board {
         display: flex;
@@ -72,10 +78,11 @@
         font-size: 16px;
       }
       .lane-delete-btn {
-        background-color: #f44336;
-        color: white;
-        padding: 4px 8px;
+        background-color: white;
+        color: black;
+        padding: 4px 12px;
         font-size: 12px;
+        border: 1px solid #333333;
       }
       .task-list {
         display: flex;
@@ -101,10 +108,11 @@
     </style>
   </head>
   <body>
-    <h1>Kanban - nanoui</h1>
+    <h1>KANBAN</h1>
   </body>
   <script type="module">
-    import { h, render } from '../src/nanoui-v2.js';
+    import { tags, render } from '../src/nanoui-v2.js';
+    const { div, span, button, input, select } = tags;
 
     // State
     let lanes = [
@@ -116,46 +124,46 @@
     let maxTaskId = 0;
 
     // Containers
-    const board = h('div', { id: 'board', class: 'board' });
+    const board = div({ id: 'board', class: 'board' });
 
     // Lane input
-    const laneInput = h('input', {
+    const laneInput = input({
       id: 'lane-input',
       type: 'text',
       placeholder: 'レーン名...'
     });
 
     // Lane add button
-    const laneAddBtn = h('button', {
+    const laneAddBtn = button({
       id: 'lane-add-btn',
       class: 'add-btn',
       onClick: () => addLane()
     }, 'レーン追加');
 
     // Task input
-    const taskInput = h('input', {
+    const taskInput = input({
       id: 'task-input',
       type: 'text',
       placeholder: 'タスク名...'
     });
 
     // Lane select dropdown
-    const laneSelect = h('select', { id: 'lane-select' });
+    const laneSelect = select({ id: 'lane-select' });
 
     // Task add button
-    const taskAddBtn = h('button', {
+    const taskAddBtn = button({
       id: 'task-add-btn',
       class: 'add-btn',
       onClick: () => addTask()
     }, 'タスク追加');
 
     // Controls
-    const controls = h('div', { id: 'controls', class: 'controls' },
-      h('div', { id: 'lane-controls', class: 'control-group' },
+    const controls = div({ id: 'controls', class: 'controls' },
+      div({ id: 'lane-controls', class: 'control-group' },
         laneInput,
         laneAddBtn
       ),
-      h('div', { id: 'task-controls', class: 'control-group' },
+      div({ id: 'task-controls', class: 'control-group' },
         taskInput,
         laneSelect,
         taskAddBtn
@@ -167,24 +175,24 @@
       const isFirst = laneIndex === 0;
       const isLast = laneIndex === lanesArray.length - 1;
 
-      return h('div', { 'data-key': `task-${task.id}`, class: 'task' },
-        h('div', { 'data-key': `task-name-${task.id}`, class: 'task-name' }, task.name),
-        h('div', { 'data-key': `task-buttons-${task.id}`, class: 'task-buttons' },
-          h('button', {
+      return div({ 'data-key': `task-${task.id}`, class: 'task' },
+        div({ 'data-key': `task-name-${task.id}`, class: 'task-name' }, task.name),
+        div({ 'data-key': `task-buttons-${task.id}`, class: 'task-buttons' },
+          button({
             'data-key': `task-left-${task.id}`,
             class: `move-btn ${isFirst ? 'hidden' : ''}`,
             onClick: () => moveTask(task.id, -1, lanesArray)
           }, '<'),
-          h('button', {
+          button({
             'data-key': `task-right-${task.id}`,
             class: `move-btn ${isLast ? 'hidden' : ''}`,
             onClick: () => moveTask(task.id, 1, lanesArray)
           }, '>'),
-          h('button', {
+          button({
             'data-key': `task-delete-${task.id}`,
             class: `delete-btn ${!isFirst && !isLast ? 'hidden' : ''}`,
             onClick: () => deleteTask(task.id, lanesArray)
-          }, 'X')
+          }, 'x')
         )
       );
     }
@@ -193,16 +201,16 @@
     function createLaneElement(lane, lanesArray) {
       const laneIndex = lanesArray.findIndex(l => l.id === lane.id);
 
-      return h('div', { 'data-key': `lane-${lane.id}`, class: 'lane' },
-        h('div', { 'data-key': `lane-header-${lane.id}`, class: 'lane-header' },
-          h('span', { 'data-key': `lane-title-${lane.id}`, class: 'lane-title' }, lane.name),
-          h('button', {
+      return div({ 'data-key': `lane-${lane.id}`, class: 'lane' },
+        div({ 'data-key': `lane-header-${lane.id}`, class: 'lane-header' },
+          span({ 'data-key': `lane-title-${lane.id}`, class: 'lane-title' }, lane.name),
+          button({
             'data-key': `lane-delete-${lane.id}`,
             class: 'lane-delete-btn',
             onClick: () => deleteLane(lane.id, lanesArray)
           }, '削除')
         ),
-        h('div', { 'data-key': `lane-tasks-${lane.id}`, class: 'task-list' },
+        div({ 'data-key': `lane-tasks-${lane.id}`, class: 'task-list' },
           ...lane.tasks.map(task => createTaskElement(task, laneIndex, lanesArray))
         )
       );
