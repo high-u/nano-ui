@@ -167,24 +167,24 @@
       const isFirst = laneIndex === 0;
       const isLast = laneIndex === lanesArray.length - 1;
 
-      return h('div', { id: `task-${task.id}`, class: 'task' },
-        h('div', { id: `task-name-${task.id}`, class: 'task-name' }, task.name),
-        h('div', { id: `task-buttons-${task.id}`, class: 'task-buttons' },
+      return h('div', { 'data-key': `task-${task.id}`, class: 'task' },
+        h('div', { 'data-key': `task-name-${task.id}`, class: 'task-name' }, task.name),
+        h('div', { 'data-key': `task-buttons-${task.id}`, class: 'task-buttons' },
           h('button', {
-            id: `task-left-${task.id}`,
+            'data-key': `task-left-${task.id}`,
             class: `move-btn ${isFirst ? 'hidden' : ''}`,
             onClick: () => moveTask(task.id, -1, lanesArray)
-          }, '←'),
+          }, '<'),
           h('button', {
-            id: `task-right-${task.id}`,
+            'data-key': `task-right-${task.id}`,
             class: `move-btn ${isLast ? 'hidden' : ''}`,
             onClick: () => moveTask(task.id, 1, lanesArray)
-          }, '→'),
+          }, '>'),
           h('button', {
-            id: `task-delete-${task.id}`,
-            class: 'delete-btn',
+            'data-key': `task-delete-${task.id}`,
+            class: `delete-btn ${!isFirst && !isLast ? 'hidden' : ''}`,
             onClick: () => deleteTask(task.id, lanesArray)
-          }, '削除')
+          }, 'X')
         )
       );
     }
@@ -193,16 +193,16 @@
     function createLaneElement(lane, lanesArray) {
       const laneIndex = lanesArray.findIndex(l => l.id === lane.id);
 
-      return h('div', { id: `lane-${lane.id}`, class: 'lane' },
-        h('div', { id: `lane-header-${lane.id}`, class: 'lane-header' },
-          h('span', { id: `lane-title-${lane.id}`, class: 'lane-title' }, lane.name),
+      return h('div', { 'data-key': `lane-${lane.id}`, class: 'lane' },
+        h('div', { 'data-key': `lane-header-${lane.id}`, class: 'lane-header' },
+          h('span', { 'data-key': `lane-title-${lane.id}`, class: 'lane-title' }, lane.name),
           h('button', {
-            id: `lane-delete-${lane.id}`,
+            'data-key': `lane-delete-${lane.id}`,
             class: 'lane-delete-btn',
             onClick: () => deleteLane(lane.id, lanesArray)
           }, '削除')
         ),
-        h('div', { id: `lane-tasks-${lane.id}`, class: 'task-list' },
+        h('div', { 'data-key': `lane-tasks-${lane.id}`, class: 'task-list' },
           ...lane.tasks.map(task => createTaskElement(task, laneIndex, lanesArray))
         )
       );

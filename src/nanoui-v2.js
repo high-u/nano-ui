@@ -25,6 +25,7 @@ export const h = (tag, props = {}, ...children) => {
     if (key.startsWith('on')) {
       // Handle events (onClick, onInput, etc.)
       element.addEventListener(key.slice(2).toLowerCase(), value);
+      element.setAttribute('data-has-event', 'true');
     } else {
       // 関数の場合は実行して値を取得
       const finalValue = typeof value === 'function' ? value() : value;
@@ -67,7 +68,6 @@ const attributesEqual = (oldEl, newEl) => {
 
   for (let i = 0; i < oldAttrs.length; i++) {
     const attr = oldAttrs[i];
-    if (attr.name.startsWith('on')) continue;
     if (newEl.getAttribute(attr.name) !== attr.value) return false;
   }
 
@@ -75,9 +75,9 @@ const attributesEqual = (oldEl, newEl) => {
 };
 
 /**
- * Get key from element (id attribute)
+ * Get key from element (data-key attribute)
  */
-const getKey = (el) => el.id;
+const getKey = (el) => el.getAttribute('data-key');
 
   /**
    * Create a diff renderer for efficient list rendering
@@ -125,7 +125,6 @@ const getKey = (el) => el.id;
             }
 
             const newChildChildren = Array.from(newChild.children);
-            // newChild.innerHTML = '';
 
             const targetPosition = parent.children[index];
             if (targetPosition) {
@@ -148,7 +147,6 @@ const getKey = (el) => el.id;
             }
 
             const newChildChildren = Array.from(newChild.children);
-            // newChild.innerHTML = '';
 
             const targetPosition = parent.children[index];
             if (targetPosition) {
