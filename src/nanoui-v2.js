@@ -118,8 +118,14 @@ const getKey = (el) => el.id;
           // タグが違う場合は newChild を使用
           if (existingRef.tagName !== newChild.tagName) {
             console.log('タグ変更（再作成）:', key);
+
+            // 古い要素を DOM から削除
+            if (existingRef.parentNode) {
+              existingRef.parentNode.removeChild(existingRef);
+            }
+
             const newChildChildren = Array.from(newChild.children);
-            newChild.innerHTML = '';
+            // newChild.innerHTML = '';
 
             const targetPosition = parent.children[index];
             if (targetPosition) {
@@ -135,8 +141,14 @@ const getKey = (el) => el.id;
           // 属性が違う場合は newChild を使用、子孫は再利用
           if (!attributesEqual(existingRef, newChild)) {
             console.log('属性変更（再作成）:', key);
+
+            // 古い要素を DOM から削除
+            if (existingRef.parentNode) {
+              existingRef.parentNode.removeChild(existingRef);
+            }
+
             const newChildChildren = Array.from(newChild.children);
-            newChild.innerHTML = '';
+            // newChild.innerHTML = '';
 
             const targetPosition = parent.children[index];
             if (targetPosition) {
