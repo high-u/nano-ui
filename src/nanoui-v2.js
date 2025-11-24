@@ -221,7 +221,17 @@ const getKey = (el) => el.getAttribute('data-key');
 
 // Proxy-based tags object (VanJS style)
 export const tags = new Proxy({}, {
-  get: (_, tag) => (props = {}, ...children) => h(tag, props, ...children)
+  get: (_, tag) => {
+    if (tag === 'svg') {
+      // svgの場合は文字列をパースして返す
+      return (svgString) => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(svgString, 'image/svg+xml');
+        return doc.documentElement;
+      };
+    }
+    return (props = {}, ...children) => h(tag, props, ...children);
+  }
 });
 
 // Export default as h for convenience
