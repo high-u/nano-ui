@@ -96,14 +96,42 @@ const getKey = (el) => el.getAttribute('data-key');
   export const render = (container, createElements) => {
     // 前回DOMに追加した要素への参照を保持
     const elementRefs = new Map();
+    const noKeyElements = [];  // keyなし要素の配列
 
     return (...args) => {
       const newElements = createElements(...args);
       const usedKeys = new Set();
+      const newNoKeyElements = [];  // 今回追加されたkeyなし要素
 
     // ツリーをパッチ
     const patchTree = (parent, newChildren) => {
       const currentKeys = new Set();
+
+      // ヘルパー: 新しい要素を挿入して参照を保存
+      const insertNewElement = (newEl, index, shouldRemoveOld = null) => {
+        // 古い要素を削除
+        shouldRemoveOld?.parentNode?.removeChild(shouldRemoveOld);
+
+        // 新しい要素を挿入
+        const targetPosition = parent.children[index];
+        if (targetPosition) {
+          parent.insertBefore(newEl, targetPosition);
+        } else {
+          parent.appendChild(newEl);
+        }
+
+        // 自分だけの参照を保存
+        const k = getKey(newEl);
+        if (k) {
+          elementRefs.set(k, newEl);
+          usedKeys.add(k);
+        } else {
+          newNoKeyElements.push(newEl);
+        }
+
+        // 子要素はpatchTreeで再帰処理
+        patchTree(newEl, Array.from(newEl.children));
+      };
 
       newChildren.forEach((newChild, index) => {
         const key = getKey(newChild);
@@ -114,92 +142,41 @@ const getKey = (el) => el.getAttribute('data-key');
 
         const existingRef = key ? elementRefs.get(key) : null;
 
-        if (existingRef) {
-          // タグが違う場合は newChild を使用
-          if (existingRef.tagName !== newChild.tagName) {
-            console.log('タグ変更（再作成）:', key);
+        // 新規作成 or タグ変更 or 属性変更 → 新しい要素を挿入
+        if (!existingRef ||
+            existingRef.tagName !== newChild.tagName ||
+            !attributesEqual(existingRef, newChild)) {
 
-            // 古い要素を DOM から削除
-            if (existingRef.parentNode) {
-              existingRef.parentNode.removeChild(existingRef);
-            }
+          const reason = !existingRef ? '新規作成:' :
+                         existingRef.tagName !== newChild.tagName ? 'タグ変更（再作成）:' :
+                         '属性変更（再作成）:';
+          console.log(reason, key);
 
-            const newChildChildren = Array.from(newChild.children);
+          insertNewElement(newChild, index, existingRef);
+          return;
+        }
 
-            const targetPosition = parent.children[index];
-            if (targetPosition) {
-              parent.insertBefore(newChild, targetPosition);
-            } else {
-              parent.appendChild(newChild);
-            }
-            elementRefs.set(key, newChild);
-            patchTree(newChild, newChildChildren);
-            return;
-          }
-
-          // 属性が違う場合は newChild を使用、子孫は再利用
-          if (!attributesEqual(existingRef, newChild)) {
-            console.log('属性変更（再作成）:', key);
-
-            // 古い要素を DOM から削除
-            if (existingRef.parentNode) {
-              existingRef.parentNode.removeChild(existingRef);
-            }
-
-            const newChildChildren = Array.from(newChild.children);
-
-            const targetPosition = parent.children[index];
-            if (targetPosition) {
-              parent.insertBefore(newChild, targetPosition);
-            } else {
-              parent.appendChild(newChild);
-            }
-            elementRefs.set(key, newChild);
-            patchTree(newChild, newChildChildren);
-            return;
-          }
-
-          // 位置調整（親の付け替え含む）
-          const targetPosition = parent.children[index];
-          if (existingRef.parentNode !== parent || targetPosition !== existingRef) {
-            if (targetPosition) {
-              parent.insertBefore(existingRef, targetPosition);
-            } else {
-              parent.appendChild(existingRef);
-            }
-          }
-
-          // テキスト更新
-          if (existingRef.children.length === 0 && newChild.children.length === 0) {
-            if (existingRef.textContent !== newChild.textContent) {
-              existingRef.textContent = newChild.textContent;
-            }
+        // 既存要素を再利用 - 位置調整
+        const targetPosition = parent.children[index];
+        if (existingRef.parentNode !== parent || targetPosition !== existingRef) {
+          if (targetPosition) {
+            parent.insertBefore(existingRef, targetPosition);
           } else {
-            patchTree(existingRef, Array.from(newChild.children));
+            parent.appendChild(existingRef);
+          }
+        }
+
+        // テキスト更新 or 子要素の再帰処理
+        if (existingRef.children.length === 0 && newChild.children.length === 0) {
+          if (existingRef.textContent !== newChild.textContent) {
+            existingRef.textContent = newChild.textContent;
           }
         } else {
-          // 新規作成
-          console.log('新規作成:', key);
-          const targetPosition = parent.children[index];
-          if (targetPosition) {
-            parent.insertBefore(newChild, targetPosition);
-          } else {
-            parent.appendChild(newChild);
-          }
-          // 参照を保存（子孫も含めて再帰的に）
-          const saveRefs = (el) => {
-            const k = getKey(el);
-            if (k) {
-              elementRefs.set(k, el);
-              usedKeys.add(k);
-            }
-            Array.from(el.children).forEach(saveRefs);
-          };
-          saveRefs(newChild);
+          patchTree(existingRef, Array.from(newChild.children));
         }
       });
 
-      // 不要な直接の子要素を削除（DOMからのみ）
+      // 不要な子要素を削除
       Array.from(parent.children).forEach(child => {
         const key = getKey(child);
         if (key && !currentKeys.has(key)) {
@@ -209,6 +186,17 @@ const getKey = (el) => el.getAttribute('data-key');
     };
 
     patchTree(container, newElements);
+
+    // 古いkeyなし要素を削除
+    noKeyElements.forEach(el => {
+      if (el.parentNode) {
+        el.remove();
+      }
+    });
+
+    // keyなし要素の配列を更新
+    noKeyElements.length = 0;
+    noKeyElements.push(...newNoKeyElements);
 
     // 使われなかった参照を削除
     elementRefs.forEach((_, key) => {
