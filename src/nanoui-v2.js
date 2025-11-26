@@ -103,8 +103,10 @@ const getKey = (el) => el.getAttribute('data-key');
 
     // ツリーをパッチ
     const patchTree = (parent, newChildren) => {
+      // 今回使用されたkeyと、位置ベースで再利用するkeyなし要素を記録
       const currentKeys = new Set();
       const retainedNoKey = new Set();
+      // 既存の子要素のスナップショットを取得（位置ベース再利用用）
       const existingChildren = Array.from(parent.children);
 
       // keyなし要素を位置ベースで再利用する
@@ -117,7 +119,7 @@ const getKey = (el) => el.getAttribute('data-key');
         return candidate;
       };
 
-      // ヘルパー: 新しい要素を挿入して参照を保存
+      // 新しい要素を挿入し、参照を登録する
       const insertNewElement = (newEl, index, shouldRemoveOld = null) => {
         // 古い要素を削除
         shouldRemoveOld?.parentNode?.removeChild(shouldRemoveOld);
@@ -143,6 +145,7 @@ const getKey = (el) => el.getAttribute('data-key');
         patchTree(newEl, Array.from(newEl.children));
       };
 
+      // 新しい子要素を順番に適用する
       newChildren.forEach((newChild, index) => {
         const key = getKey(newChild);
         if (key) {
@@ -150,12 +153,15 @@ const getKey = (el) => el.getAttribute('data-key');
           usedKeys.add(key);
         }
 
+        // key優先、なければ位置ベースで再利用候補を探す
         const existingRef = key ? elementRefs.get(key) : findReusableNoKey(newChild, index);
 
+        const needsRecreate = !existingRef ||
+          existingRef.tagName !== newChild.tagName ||
+          !attributesEqual(existingRef, newChild);
+
         // 新規作成 or タグ変更 or 属性変更 → 新しい要素を挿入
-        if (!existingRef ||
-            existingRef.tagName !== newChild.tagName ||
-            !attributesEqual(existingRef, newChild)) {
+        if (needsRecreate) {
 
           const reason = !existingRef ? '新規作成:' :
                          existingRef.tagName !== newChild.tagName ? 'タグ変更（再作成）:' :
@@ -178,17 +184,19 @@ const getKey = (el) => el.getAttribute('data-key');
           retainedNoKey.add(existingRef);
         }
 
-        // テキスト更新 or 子要素の再帰処理
-        if (existingRef.children.length === 0 && newChild.children.length === 0) {
+        // テキストのみ更新 or 子要素の再帰処理
+        const isTextOnly = existingRef.children.length === 0 && newChild.children.length === 0;
+        if (isTextOnly) {
           if (existingRef.textContent !== newChild.textContent) {
             existingRef.textContent = newChild.textContent;
           }
+          return;
         } else {
           patchTree(existingRef, Array.from(newChild.children));
         }
       });
 
-      // 不要な子要素を削除
+      // 使われなくなった子要素を削除
       Array.from(parent.children).forEach(child => {
         const key = getKey(child);
         if (key && !currentKeys.has(key)) {
