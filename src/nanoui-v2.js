@@ -96,16 +96,26 @@ const getKey = (el) => el.getAttribute('data-key');
   export const render = (container, createElements) => {
     // 前回DOMに追加した要素への参照を保持
     const elementRefs = new Map();
-    const noKeyElements = [];  // keyなし要素の配列
 
     return (...args) => {
       const newElements = createElements(...args);
       const usedKeys = new Set();
-      const newNoKeyElements = [];  // 今回追加されたkeyなし要素
 
     // ツリーをパッチ
     const patchTree = (parent, newChildren) => {
       const currentKeys = new Set();
+      const retainedNoKey = new Set();
+      const existingChildren = Array.from(parent.children);
+
+      // keyなし要素を位置ベースで再利用する
+      const findReusableNoKey = (newEl, index) => {
+        const candidate = existingChildren[index];
+        if (!candidate) return null;
+        if (getKey(candidate)) return null;
+        if (candidate.tagName !== newEl.tagName) return null;
+        if (!attributesEqual(candidate, newEl)) return null;
+        return candidate;
+      };
 
       // ヘルパー: 新しい要素を挿入して参照を保存
       const insertNewElement = (newEl, index, shouldRemoveOld = null) => {
@@ -126,7 +136,7 @@ const getKey = (el) => el.getAttribute('data-key');
           elementRefs.set(k, newEl);
           usedKeys.add(k);
         } else {
-          newNoKeyElements.push(newEl);
+          retainedNoKey.add(newEl);
         }
 
         // 子要素はpatchTreeで再帰処理
@@ -140,7 +150,7 @@ const getKey = (el) => el.getAttribute('data-key');
           usedKeys.add(key);
         }
 
-        const existingRef = key ? elementRefs.get(key) : null;
+        const existingRef = key ? elementRefs.get(key) : findReusableNoKey(newChild, index);
 
         // 新規作成 or タグ変更 or 属性変更 → 新しい要素を挿入
         if (!existingRef ||
@@ -164,6 +174,8 @@ const getKey = (el) => el.getAttribute('data-key');
           } else {
             parent.appendChild(existingRef);
           }
+        } else if (!key) {
+          retainedNoKey.add(existingRef);
         }
 
         // テキスト更新 or 子要素の再帰処理
@@ -181,22 +193,16 @@ const getKey = (el) => el.getAttribute('data-key');
         const key = getKey(child);
         if (key && !currentKeys.has(key)) {
           child.remove();
+          return;
+        }
+
+        if (!key && !retainedNoKey.has(child)) {
+          child.remove();
         }
       });
     };
 
     patchTree(container, newElements);
-
-    // 古いkeyなし要素を削除
-    noKeyElements.forEach(el => {
-      if (el.parentNode) {
-        el.remove();
-      }
-    });
-
-    // keyなし要素の配列を更新
-    noKeyElements.length = 0;
-    noKeyElements.push(...newNoKeyElements);
 
     // 使われなかった参照を削除
     elementRefs.forEach((_, key) => {
