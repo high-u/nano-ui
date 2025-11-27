@@ -1,22 +1,3 @@
-/**
- * nano-ui - Minimal hyperscript style DOM creation library
- * Simple function to create DOM elements with JSX-like syntax
- */
-
-/**
- * Create a DOM element with hyperscript style
- * @param {string} tag - HTML tag name
- * @param {string|undefined} key - Unique key for the element (for educational purposes)
- * @param {Object} props - Element properties (attributes, events, styles)
- * @param {...(Node|string|Array)} children - Child elements or text
- * @returns {HTMLElement} Created DOM element
- *
- * @example
- * h('div', 'unique-key', { class: 'container' },
- *   h('span', 'span-key', { style: 'color: red' }, 'Hello'),
- *   'World'
- * )
- */
 export const h = (tag, props = {}, ...children) => {
   const element = document.createElement(tag);
 
@@ -56,28 +37,6 @@ export const h = (tag, props = {}, ...children) => {
   return element;
 };
 
-/**
- * Create a diff renderer for efficient list rendering or single element replacement
- * @param {Object} options - Renderer options
- * @param {HTMLElement} options.container - Parent element to render into
- * @param {Function} options.createElement - Function to create element from item
- * @returns {Function} Render function
- *
- * @example
- * // For arrays
- * const renderTasks = render({
- *   container: taskList,
- *   createElement: createTaskElement
- * });
- * renderTasks(tasks);
- * 
- * // For single elements
- * const renderCounter = render({
- *   container: counterDiv,
- *   createElement: () => h('span', 'counter', {}, String(count))
- * });
- * renderCounter();
- */
 export const render = (container, createElement) => {
   const elementMap = new Map();  // key → element
   
@@ -114,5 +73,4 @@ export const render = (container, createElement) => {
   };
 };
 
-// Export default as h for convenience
 export default h;

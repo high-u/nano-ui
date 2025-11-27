@@ -1,30 +1,14 @@
-/**
- * nano-ui - Minimal hyperscript style DOM creation library
- * Simple function to create DOM elements with JSX-like syntax
- */
-
-/**
- * Create a DOM element with hyperscript style
- * @param {string} tag - HTML tag name
- * @param {string|undefined} key - Unique key for the element (for educational purposes)
- * @param {Object} props - Element properties (attributes, events, styles)
- * @param {...(Node|string|Array)} children - Child elements or text
- * @returns {HTMLElement} Created DOM element
- *
- * @example
- * h('div', 'unique-key', { class: 'container' },
- *   h('span', 'span-key', { style: 'color: red' }, 'Hello'),
- *   'World'
- * )
- */
 export const h = (tag, props = {}, ...children) => {
   const element = document.createElement(tag);
+  const events = {};
 
   // Set properties
   Object.entries(props).forEach(([key, value]) => {
     if (key.startsWith('on')) {
       // Handle events (onClick, onInput, etc.)
-      element.addEventListener(key.slice(2).toLowerCase(), value);
+      const eventName = key.slice(2).toLowerCase();
+      element.addEventListener(eventName, value);
+      events[eventName] = value;
       element.setAttribute('data-has-event', 'true');
     } else {
       // 関数の場合は実行して値を取得
@@ -38,6 +22,9 @@ export const h = (tag, props = {}, ...children) => {
       }
     }
   });
+
+  // イベント情報をWeakMapに保持
+  eventStore.set(element, events);
 
   // Append children
   const appendChildren = (parent, children) => {
@@ -79,20 +66,8 @@ const attributesEqual = (oldEl, newEl) => {
  */
 const getKey = (el) => el.getAttribute('data-key');
 
-  /**
-   * Create a diff renderer for efficient list rendering
-   * @param {HTMLElement} container - Container element to render into
-   * @param {Function} createElements - Function that creates elements (will receive renderer arguments)
-   * @returns {Function} Renderer function that accepts arguments to pass to createElements
-   *
-   * @example
-   * const renderer = render(container, (data, options) => {
-   *   return h('div', {}, `Hello ${data.name}, count: ${options.count}`);
-   * });
-   * 
-   * // レンダラー実行時に引数を渡す
-   * renderer({ name: 'World' }, { count: 42 });
-   */
+// イベントハンドラを要素ごとに保持するストア（WeakMapなので削除漏れに強い）
+const eventStore = new WeakMap();
   export const render = (container, createElements) => {
     // 前回DOMに追加した要素への参照を保持
     const elementRefs = new Map();
@@ -119,6 +94,58 @@ const getKey = (el) => el.getAttribute('data-key');
         return candidate;
       };
 
+      // プロパティ差分を同期する（属性で表現されない値を補完）
+      const syncFormProps = (existingRef, newEl) => {
+        if (existingRef instanceof HTMLInputElement || existingRef instanceof HTMLTextAreaElement) {
+          if (existingRef.value !== newEl.value) existingRef.value = newEl.value;
+          if (existingRef.checked !== newEl.checked) existingRef.checked = newEl.checked;
+          if (existingRef.disabled !== newEl.disabled) existingRef.disabled = newEl.disabled;
+        } else if (existingRef instanceof HTMLSelectElement) {
+          if (existingRef.value !== newEl.value) existingRef.value = newEl.value;
+          if (existingRef.selectedIndex !== newEl.selectedIndex) existingRef.selectedIndex = newEl.selectedIndex;
+          if (existingRef.disabled !== newEl.disabled) existingRef.disabled = newEl.disabled;
+        } else if (existingRef instanceof HTMLOptionElement) {
+          if (existingRef.selected !== newEl.selected) existingRef.selected = newEl.selected;
+          if (existingRef.disabled !== newEl.disabled) existingRef.disabled = newEl.disabled;
+        }
+      };
+
+      // イベントを全付け替えする
+      const replaceEvents = (existingRef, newEl) => {
+        const oldEvents = eventStore.get(existingRef) || {};
+        const newEvents = eventStore.get(newEl) || {};
+
+        Object.entries(oldEvents).forEach(([eventName, handler]) => {
+          existingRef.removeEventListener(eventName, handler);
+        });
+        Object.entries(newEvents).forEach(([eventName, handler]) => {
+          existingRef.addEventListener(eventName, handler);
+        });
+
+        eventStore.set(existingRef, newEvents);
+      };
+
+      // テキストノードと子要素が混在しているか判定する
+      const hasMixedContent = (el) => {
+        let hasText = false;
+        let hasElement = false;
+        el.childNodes.forEach(node => {
+          if (node.nodeType === Node.ELEMENT_NODE) hasElement = true;
+          if (node.nodeType === Node.TEXT_NODE && node.textContent !== '') hasText = true;
+        });
+        return hasText && hasElement;
+      };
+
+      // 差分判定: 再作成が必要かを返す
+      const shouldRecreate = (existingRef, newEl) => {
+        if (hasMixedContent(newEl)) return true;
+        if (existingRef && hasMixedContent(existingRef)) return true;
+        if (!existingRef) return true;
+        if (existingRef.tagName !== newEl.tagName) return true;
+        if (!attributesEqual(existingRef, newEl)) return true;
+        return false;
+      };
+
       // 新しい要素を挿入し、参照を登録する
       const insertNewElement = (newEl, index, shouldRemoveOld = null) => {
         // 古い要素を削除
@@ -140,10 +167,22 @@ const getKey = (el) => el.getAttribute('data-key');
         } else {
           retainedNoKey.add(newEl);
         }
-
-        // 子要素はpatchTreeで再帰処理
-        patchTree(newEl, Array.from(newEl.children));
       };
+
+      // 位置調整のみを行う
+      const ensurePosition = (el, index) => {
+        const targetPosition = parent.children[index];
+        if (el.parentNode !== parent || targetPosition !== el) {
+          if (targetPosition) {
+            parent.insertBefore(el, targetPosition);
+          } else {
+            parent.appendChild(el);
+          }
+        }
+      };
+
+      // 子要素の再帰処理を最後にまとめて呼ぶためのキュー
+      const childRecurseQueue = [];
 
       // 新しい子要素を順番に適用する
       newChildren.forEach((newChild, index) => {
@@ -156,44 +195,47 @@ const getKey = (el) => el.getAttribute('data-key');
         // key優先、なければ位置ベースで再利用候補を探す
         const existingRef = key ? elementRefs.get(key) : findReusableNoKey(newChild, index);
 
-        const needsRecreate = !existingRef ||
-          existingRef.tagName !== newChild.tagName ||
-          !attributesEqual(existingRef, newChild);
-
-        // 新規作成 or タグ変更 or 属性変更 → 新しい要素を挿入
-        if (needsRecreate) {
-
+        // 再作成が必要ならログを出して挿入
+        if (shouldRecreate(existingRef, newChild)) {
+          const mixed = hasMixedContent(newChild) || (existingRef && hasMixedContent(existingRef));
           const reason = !existingRef ? '新規作成:' :
                          existingRef.tagName !== newChild.tagName ? 'タグ変更（再作成）:' :
+                         mixed ? 'テキスト混在（再作成）:' :
                          '属性変更（再作成）:';
           console.log(reason, key);
 
           insertNewElement(newChild, index, existingRef);
+          // 子は後でまとめて再帰
+          childRecurseQueue.push({ parentEl: parent.children[index], newChild });
           return;
         }
 
         // 既存要素を再利用 - 位置調整
-        const targetPosition = parent.children[index];
-        if (existingRef.parentNode !== parent || targetPosition !== existingRef) {
-          if (targetPosition) {
-            parent.insertBefore(existingRef, targetPosition);
-          } else {
-            parent.appendChild(existingRef);
-          }
-        } else if (!key) {
+        ensurePosition(existingRef, index);
+
+        // keyなしの再利用は記録する
+        if (!key) {
           retainedNoKey.add(existingRef);
         }
 
-        // テキストのみ更新 or 子要素の再帰処理
+        // フォーム系プロパティとイベントを同期
+        syncFormProps(existingRef, newChild);
+        replaceEvents(existingRef, newChild);
+
+        // テキストのみ更新 or 子要素の再帰処理を後段で行う
         const isTextOnly = existingRef.children.length === 0 && newChild.children.length === 0;
         if (isTextOnly) {
           if (existingRef.textContent !== newChild.textContent) {
             existingRef.textContent = newChild.textContent;
           }
-          return;
         } else {
-          patchTree(existingRef, Array.from(newChild.children));
+          childRecurseQueue.push({ parentEl: existingRef, newChild });
         }
+      });
+
+      // 子要素の再帰処理をまとめて実行
+      childRecurseQueue.forEach(({ parentEl, newChild }) => {
+        patchTree(parentEl, Array.from(newChild.children));
       });
 
       // 使われなくなった子要素を削除
@@ -224,12 +266,38 @@ const getKey = (el) => el.getAttribute('data-key');
 // Proxy-based tags object (VanJS style)
 export const tags = new Proxy({}, {
   get: (_, tag) => {
+    // svgは文字列からパースし、propsを適用できるようにする（キャッシュ付き）
     if (tag === 'svg') {
-      // svgの場合は文字列をパースして返す
-      return (svgString) => {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(svgString, 'image/svg+xml');
-        return doc.documentElement;
+      const svgCache = new Map();
+      const parser = new DOMParser();
+      const applyProps = (el, props = {}) => {
+        Object.entries(props).forEach(([key, value]) => {
+          if (key.startsWith('on')) {
+            el.addEventListener(key.slice(2).toLowerCase(), value);
+            el.setAttribute('data-has-event', 'true');
+            return;
+          }
+          const finalValue = typeof value === 'function' ? value() : value;
+          if (key in el) {
+            el[key] = finalValue;
+          } else {
+            el.setAttribute(key, finalValue);
+          }
+        });
+      };
+
+      return (props = {}, svgString) => {
+        const cacheKey = svgString;
+        let template = svgCache.get(cacheKey);
+        if (!template) {
+          const doc = parser.parseFromString(svgString, 'image/svg+xml');
+          template = doc.documentElement;
+          svgCache.set(cacheKey, template);
+        }
+
+        const cloned = template.cloneNode(true);
+        applyProps(cloned, props);
+        return cloned;
       };
     }
     return (props = {}, ...children) => h(tag, props, ...children);

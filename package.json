@@ -2,14 +2,17 @@
   "name": "minimal-webui",
   "version": "1.0.0",
   "main": "index.js",
+  "type": "module",
   "scripts": {
-    "build": "terser src/nanoui.js -c -m --module --ecma 2020 -o dist/nanoui.min.js --source-map"
+    "build": "terser src/nanoui-v2.js -c -m --module --ecma 2020 -o dist/nanoui-v2.min.js --source-map",
+    "test": "node --test"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "devDependencies": {
+    "jsdom": "^27.2.0",
     "terser": "^5.44.1"
   }
 }
