@@ -32,7 +32,6 @@ const makeH = (ns) => (tag, props = {}, ...children) => {
 const h = makeH(null);
 const hSvg = makeH('http://www.w3.org/2000/svg');
 
-// Helpers
 const attributesEqual = (oldEl, newEl) => {
   const oldAttrs = oldEl.attributes;
   const newAttrs = newEl.attributes;
