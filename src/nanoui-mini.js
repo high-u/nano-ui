@@ -77,25 +77,31 @@ export const render = (container, createElements) => {
     newChildren.forEach((newChild, index) => {
       const existing = oldChildren[index];
       if (shouldReplace(existing, newChild)) {
+        const mixedContent = hasMixedContent(newChild) || (existing && hasMixedContent(existing));
+        if (existing && !mixedContent) {
+          patchTree(existing, Array.from(newChild.children));
+          newChild.replaceChildren();
+          newChild.append(...Array.from(existing.childNodes));
+        }
         const target = parent.children[index];
         if (target) {
           target.replaceWith(newChild);
         } else {
           parent.appendChild(newChild);
         }
-        return;
-      }
-      if (parent.children[index] !== existing) {
-        parent.insertBefore(existing, parent.children[index] || null);
-      }
-      const isTextOnly = existing.children.length === 0 && newChild.children.length === 0;
-      if (isTextOnly) {
-        if (existing.textContent !== newChild.textContent) {
-          existing.textContent = newChild.textContent;
+      } else {
+        if (parent.children[index] !== existing) {
+          parent.insertBefore(existing, parent.children[index] || null);
         }
-        return;
+        const isTextOnly = existing.children.length === 0 && newChild.children.length === 0;
+        if (isTextOnly) {
+          if (existing.textContent !== newChild.textContent) {
+            existing.textContent = newChild.textContent;
+          }
+        } else {
+          patchTree(existing, Array.from(newChild.children));
+        }
       }
-      patchTree(existing, Array.from(newChild.children));
     });
     while (parent.children.length > newChildren.length) {
       parent.removeChild(parent.lastElementChild ?? parent.lastChild);
