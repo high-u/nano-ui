@@ -4,7 +4,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "build": "terser src/nanoui-v2.js -c -m --module --ecma 2020 -o dist/nanoui-v2.min.js --source-map",
+    "build": "terser src/picoui.js -c -m --module --ecma 2020 -o dist/picoui.min.js --source-map",
     "test": "node --test"
   },
   "keywords": [],
