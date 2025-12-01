@@ -16,11 +16,20 @@ const createElement = (ns) => (tag, props = {}, ...children) => {
   return element;
 };
 
-export const render = (container, createElements) => {
+export const render = (createElements) => {
+  let currentElement = null;
+
   return (...args) => {
     const result = createElements(...args);
     const normalized = Array.isArray(result) ? result : [result];
-    container.replaceChildren(...normalized);
+
+    if (!currentElement) {
+      currentElement = normalized.length === 1 ? normalized[0] : normalized;
+    } else {
+      currentElement.replaceChildren(...normalized);
+    }
+
+    return currentElement;
   };
 };
 

@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Task - nanoui</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        margin: 20px;
+      }
+      h1 {
+        font-size: 16px;
+      }
+      .controls {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 20px;
+      }
+      input {
+        padding: 8px;
+        font-size: 16px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      button {
+        padding: 8px 12px;
+        font-size: 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .add-btn {
+        background-color: #333333;
+        color: white;
+      }
+      ul {
+        list-style: none;
+        padding: 0;
+      }
+      li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px;
+        margin-bottom: 8px;
+        background-color: white;
+        border-radius: 4px;
+        border: 1px solid #ddd;
+      }
+      li.completed {
+        background-color: #e8f5e9;
+      }
+      .task-name {
+        flex: 1;
+      }
+      li.completed .task-name {
+        color: #888;
+        text-decoration: line-through;
+      }
+      .task-buttons {
+        display: flex;
+        gap: 4px;
+      }
+      .complete-btn, .delete-btn {
+        padding: 4px 8px;
+        font-size: 12px;
+        border: 1px solid #333333;
+        background-color: white;
+        color: black;
+        cursor: pointer;
+        border-radius: 4px;
+      }
+      .hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+  </body>
+  <script type="module">
+    import { tags, render } from '../src/picoui.js';
+    const { div, h1, input, button, ul, li, span } = tags;
+
+    let tasks = [];
+    let taskId = 0;
+    let inputValue = '';
+
+    const renderControls = render(() =>
+      div({ class: 'controls' },
+        input({
+          id: 'task-input',
+          type: 'text',
+          placeholder: 'タスク名...',
+          value: inputValue,
+          onInput: (e) => {
+            inputValue = e.target.value;
+          }
+        }),
+        button({
+          class: 'add-btn',
+          onClick: () => addTask()
+        }, 'タスク追加')
+      )
+    );
+
+    const controls = renderControls(inputValue);
+
+    const renderTasks = render(
+      (taskArray) => {
+        return ul({},
+          ...taskArray.map(task =>
+            li({ class: task.completed ? 'completed' : '' },
+              span({ class: 'task-name' }, task.name),
+              div({ class: 'task-buttons' },
+                button({
+                  class: `complete-btn ${task.completed ? 'hidden' : ''}`,
+                  onClick: () => completeTask(task.id)
+                }, '完了'),
+                button({
+                  class: 'delete-btn',
+                  onClick: () => deleteTask(task.id)
+                }, '削除')
+              )
+            )
+          )
+        );
+      }
+    );
+
+    const taskListContainer = div({ id: 'task-list-container' }, renderTasks(tasks));
+
+    function addTask() {
+      const name = inputValue.trim();
+      if (!name) return;
+
+      tasks.push({ id: ++taskId, name, completed: false });
+      inputValue = '';
+      renderControls(inputValue);
+      renderTasks(tasks);
+    }
+
+    function completeTask(id) {
+      const task = tasks.find(t => t.id === id);
+      if (task) {
+        task.completed = true;
+        renderTasks(tasks);
+      }
+    }
+
+    function deleteTask(id) {
+      tasks = tasks.filter(t => t.id !== id);
+      renderTasks(tasks);
+    }
+
+    document.body.append(h1({}, 'TASK'), controls, taskListContainer);
+  </script>
+</html>
